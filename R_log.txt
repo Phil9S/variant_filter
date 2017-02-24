@@ -1,0 +1,7 @@
+2017-02-24 14:18:57
+##Variant Filter Script ## R-script Log - Log Begin (Version 2)
+##Variant Filter Script ## R-script Log - Starting variant count: 999
+##Variant Filter Script ## R-script Log - Variants matching rarity threshold: 745
+##Variant Filter Script ## R-script Log - Variants matching CADD threshold: 880
+##Variant Filter Script ## R-script Log - Variants matching functional consequence: 184
+##Variant Filter Script ## R-script Log - Variants matching QUAL > 100: 58
