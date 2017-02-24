@@ -2,7 +2,7 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
