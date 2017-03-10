@@ -146,7 +146,7 @@ sed -i 's/# CHROM/CHROM/' genotype.table
 sed -i 's/# CHROM/CHROM/' sitedepth.table
 sed -i 's/# CHROM/CHROM/' allelicdepth.table
 sed -i 's/# CHROM/CHROM/' genoqual.table
-sed -i 's/#CHROM/CRHOM/' variant.table
+sed -i 's/#CHROM/CHROM/' variant.table
 ###Removing bcftools tags
 sed -i 's/:GT//g' genotype.table
 sed -i 's/:DP//g' sitedepth.table
@@ -213,11 +213,10 @@ echo -en `date +[%D-%R]` "## Variant Filter Script ## - Completing filtering on 
 Rscript ../variant_filtering.R ${wd} > /dev/null 2>&1
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Completing filtering consequence, allele frequency & rarity...Done" | tee -a ../variantfilter.log
 
-
+mv ../variantfilter.log variantfilter.log
 ###Clean up temporary files
 if [ "$TEMP" == "FALSE" ]; then
 	echo -en `date +[%D-%R]` "## Variant Filter Script ## - Removing temporary files..." | tee -a ../variantfilter.log
-	mv ../variantfilter.log variantfilter.log
 	rm allelicdepth.table
 	rm annovar.table
 	rm genoqual.table
@@ -225,7 +224,6 @@ if [ "$TEMP" == "FALSE" ]; then
 	rm sitedepth.table
 	rm variant.table
 	rm variant_orig.vcf
-	rm variant_filtering.config
 	echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Removing temporary files...Done" | tee -a variantfilter.log 
 fi
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Variant Filter Script Finsihed" | tee -a variantfilter.log

@@ -2,28 +2,28 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
 
 ###default variables & log start
 write(clock, file = "R_log.txt", append = FALSE)
-write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.1)", file = "R_log.txt", append = TRUE)
+write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.2)", file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################
 
 ###Import data tables from bash script
 ad <- read.table("allelicdepth.table", header = TRUE,stringsAsFactors = FALSE)
 anno <- read.table("annovar.table", header = TRUE, sep = "\t",stringsAsFactors = FALSE, quote="")
-gq <- read.table("genoqual.table", header = TRUE,stringsAsFactors = FALSE)
+#gq <- read.table("genoqual.table", header = TRUE,stringsAsFactors = FALSE) NOT USED currently
 gt <- read.table("genotype.table", header = TRUE,stringsAsFactors = FALSE)
 dp <- read.table("sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
 config <- read.table("variant_filtering.config",stringsAsFactors = FALSE)
 vv <- read.table("variant.table",comment.char = "",header = TRUE,stringsAsFactors = FALSE)
 ###remove columns that aren't needed
 ad <- ad[,-(2:5)]
-gq <- gq[,-(2:5)]
+#gq <- gq[,-(2:5)] NOT USED currently
 gt <- gt[,-(2:5)]
 dp <- dp[,-(2:5)]
 vv <- vv[,-(8:10)]
@@ -36,6 +36,7 @@ write(varcount, file = "R_log.txt", append = TRUE)
 
 ###Add annotation cols to variant file
 vv$GENE <- anno$Gene.refGene
+vv$TYPE <- anno$Func.refGene
 vv$AA <- anno$AAChange.refGene
 vv$CONSEQUENCE <- anno$ExonicFunc.refGene
 vv$X1000G <- anno$X1000g2015aug_all
@@ -50,22 +51,34 @@ X1000g <- config$V2[config$V1 == "1000G"]
 exac <- config$V2[config$V1 == "EXAC"]
 CADD <- config$V2[config$V1 == "CADD"]
 HET <- config$V2[config$V1 == "HET"]
-AFREQ <- config$V2[config$V1 == "AFREQ"]
+ADEPTH <- config$V2[config$V1 == "ADEPTH"]
+QUAL <- config$V2[config$V1 == "QUAL"]
+
+##################################################################################################################
+
+###filter variants to those occuring in exonic regions and splice sites
+exonic.ft <- as.data.frame(anno$ID[grepl("^exonic$",anno$Func.refGene)
+                                 | grepl("^splicing$",anno$Func.refGene)
+                                 | grepl("^exonic;splicing$",anno$Func.refGene)])
+###rename col to match other ID cols
+names(exonic.ft)[1] <- "ID"
+###filter by functional consequence
+vv.ft <- vv[vv$ID %in% exonic.ft$ID,]
+
+###log number of variants - func
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching functional consequence:",nrow(exonic.ft))
+write(varcount, file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################
 
 ###filtering on functional consequnce - ExonicFunction.refGene
-func.ft <- as.data.frame(anno$ID[grepl("nonsynonymous SNV",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("stopgain",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("stoploss",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("frameshift insertion",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("frameshift deletion",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("nonframeshift insertion",anno$ExonicFunc.refGene,fixed = TRUE)
-                                 | grepl("nonframeshift deletion",anno$ExonicFunc.refGene,fixed = TRUE)])
+func.ft <- as.data.frame(vv.ft$ID[!grepl("^synonymous SNV$",vv.ft$CONSEQUENCE)
+                                  & !grepl("^unknown$",vv.ft$CONSEQUENCE)])
+                                 
 ###rename col to match other ID cols
 names(func.ft)[1] <- "ID"
 ###filter by functional consequence
-vv.ft <- vv[vv$ID %in% func.ft$ID,]
+vv.ft <- vv.ft[vv.ft$ID %in% func.ft$ID,]
 
 ###log number of variants - func
 varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching functional consequence:",nrow(func.ft))
@@ -74,7 +87,7 @@ write(varcount, file = "R_log.txt", append = TRUE)
 ##################################################################################################################
 
 ###filter by qual
-qual.ft <- as.data.frame(vv.ft$ID[vv.ft$QUAL > 100])
+qual.ft <- as.data.frame(vv.ft$ID[vv.ft$QUAL > QUAL])
 names(qual.ft)[1] <- "ID"
 vv.ft <- vv.ft[vv.ft$ID %in% qual.ft$ID,]
 ###log number of variants - func
@@ -113,25 +126,49 @@ misspct <- ((calc[,4] / length(gt[1,-1])*100))
 vv.ft$HET_rate <- hetpct
 vv.ft$HOM_rate <- hompct
 vv.ft$MISS_rate <- misspct
+rm(hetpct, hompct, misspct, calc, HETp, nonHOM, refHOM, miss, gtm)
 
 ##################################################################################################################
 
-###aggregate mutation types and af counts
-aggAF_all <- aggregate(vv.ft$HET_val, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
-aggAF_nsyn <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV"], 
-                        by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV"]), drop = FALSE, FUN=sum)
-aggAF_trunc <- aggAF_all[,2] - aggAF_nsyn[,2]
-agg_temp <- aggAF_all
-agg_temp$VC_trunc <- aggAF_trunc
-agg_temp <- agg_temp[,-2]
-aggAF_trunc <- agg_temp
+###aggregate mutation types and af counts - ONLY PERFORMED ON HET CALLS!
+###all HET call gene sums - after functional exonic only - QUAL filtered
+aggAF_all_HET <- aggregate(vv.ft$HET_val, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
+#
+##Counts for different types of variants - splicing class by either CONSEQUENCE OR TYPE
+aggAF_splc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ], 
+     by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]), drop = FALSE, FUN=sum)
 
-names(aggAF_all)[2] <- "VC_all"
-names(aggAF_nsyn)[2] <- "VC_nsyn"
+###Counts for different types of variants - nonsynonymous (excluding splicing) class by either CONSEQUENCE OR TYPE
+aggAF_nsyn_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic" ], 
+                        by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic"]), drop = FALSE, FUN=sum)
 
-vv.ft <- merge(vv.ft, aggAF_all, by = 'GENE', sort = FALSE)[, union(names(vv.ft), names(aggAF_all))]
-vv.ft <- merge(vv.ft, aggAF_nsyn, by = 'GENE', sort = FALSE)[, union(names(vv.ft), names(aggAF_nsyn))]
-vv.ft <- merge(vv.ft, aggAF_trunc, by = 'GENE', sort = FALSE)[, union(names(vv.ft), names(aggAF_trunc))]
+###Counts for different types of variants - Truncating (including stop loss) class by either CONSEQUENCE OR TYPE
+aggAF_trunc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
+                                                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                                                           | vv.ft$CONSEQUENCE == "frameshift insertion"
+                                                                           | vv.ft$CONSEQUENCE == "nonframeshift insertion"
+                                                                           | vv.ft$CONSEQUENCE == "nonframeshift deletion"],
+                   by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
+                                                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                                                           | vv.ft$CONSEQUENCE == "frameshift insertion"
+                                                                           | vv.ft$CONSEQUENCE == "nonframeshift insertion"
+                                                                           | vv.ft$CONSEQUENCE == "nonframeshift deletion"]),
+                                                                           drop = FALSE, FUN=sum)
+###Gene count merging to single data.frame - replace na with 0
+aggAF_HET <- merge(aggAF_all_HET, aggAF_nsyn_HET, by = "GENE", all = TRUE)
+names(aggAF_HET)[2] <- "C_all"
+names(aggAF_HET)[3] <- "C_nsyn"
+aggAF_HET <- merge(aggAF_HET, aggAF_splc_HET, by = "GENE", all = TRUE)
+aggAF_HET <- merge(aggAF_HET, aggAF_trunc_HET, by = "GENE", all = TRUE)
+names(aggAF_HET)[4] <- "C_splc"
+names(aggAF_HET)[5] <- "C_trunc"
+aggAF_HET[is.na(aggAF_HET)] <- 0
+
+###merge the gene counts into the original vv.ft file - adding 4 columns - write table as output - rm variables
+###totals of subsets may not all sum to all due to certain combinations (e.g. exonic;splicing stoploss)
+vv.ft <- merge(vv.ft, aggAF_HET, by = 'GENE', sort = FALSE)[,union(names(vv.ft), names(aggAF_HET))]
+write.table(aggAF_HET,file = "variant_filtering_GeneVarCounts.tsv", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+rm(aggAF_all_HET, aggAF_nsyn_HET, aggAF_splc_HET, aggAF_trunc_HET, aggAF_HET)
 
 ##################################################################################################################
 
@@ -142,16 +179,13 @@ names(rarity.ft)[1] <- "ID"
 cadd.ft <- as.data.frame(anno$ID[anno$CADD_phred > CADD | anno$CADD_phred < 0])
 names(cadd.ft)[1] <- "ID"
 
-###log number of variants - rarity
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity threshold:",nrow(rarity.ft))
-write(varcount, file = "R_log.txt", append = TRUE)
-###log number of variants - cadd
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching CADD threshold:",nrow(cadd.ft))
-write(varcount, file = "R_log.txt", append = TRUE)
-
 ###filter vv by rarity and cadd score
 raritycadd.ft <- merge(rarity.ft, cadd.ft,sort = FALSE)
 vv.ft <- vv.ft[vv.ft$ID %in% raritycadd.ft$ID,]
+
+###log number of variants - rarity
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity & CADD threshold:",nrow(vv.ft))
+write(varcount, file = "R_log.txt", append = TRUE)
 ###tidy variables
 rm(rarity.ft,raritycadd.ft,func.ft,qual.ft)
 
@@ -167,7 +201,7 @@ write(varcount, file = "R_log.txt", append = TRUE)
 ###Extract variants based on filtered list
 vv.ft <- vv.ft[vv.ft$ID %in% hethom.ft$ID,]
 ###tidy variables and tables
-rm(gtm,refHOM,HETp,nonHOM,miss,calc,hetpct,hompct,misspct,hethom.ft)
+rm(hethom.ft)
 
 ##################################################################################################################
 
@@ -201,7 +235,7 @@ rm(alfe,afmaj,afmin,afperct,aftotal,i,r)
 ###filter on variants with no af rate above threshold
 af.ft <- data.frame(x=rep(0,nrow(af)))
 for(i in 1:nrow(af)){
-    if(max(af[i,2:ncol(af)], na.rm = TRUE) > AFREQ){
+    if(max(af[i,2:ncol(af)], na.rm = TRUE) > ADEPTH){
         af.ft[i,1] <- af[i,1]}
     else{
         af.ft[i,1] <- NA
@@ -236,5 +270,5 @@ names(af)[1] <- "Id"
 
 ###write filtered table out
 write.table(vvgt,file = "variant_filtering_results.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
-write.table(af,file = "variant_filtering_results_AF.table",sep = "\t",row.names = FALSE, quote = FALSE)
+write.table(af,file = "variant_filtering_results_AD.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
 
