@@ -2,7 +2,7 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
@@ -14,22 +14,28 @@ write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.2)", file 
 ##################################################################################################################
 
 ###Import data tables from bash script
-ad <- read.table("allelicdepth.table", header = TRUE,stringsAsFactors = FALSE)
-anno <- read.table("annovar.table", header = TRUE, sep = "\t",stringsAsFactors = FALSE, quote="")
+ad <- read.table("allelicdepth.table", header = TRUE, stringsAsFactors = FALSE)
+anno <- read.table("annovar.table", header = TRUE, sep = "\t", stringsAsFactors = FALSE, quote="")
 #gq <- read.table("genoqual.table", header = TRUE,stringsAsFactors = FALSE) NOT USED currently
-gt <- read.table("genotype.table", header = TRUE,stringsAsFactors = FALSE)
+gt <- read.table("genotype.table", header = TRUE, stringsAsFactors = FALSE)
 dp <- read.table("sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
-config <- read.table("variant_filtering.config",stringsAsFactors = FALSE)
-vv <- read.table("variant.table",comment.char = "",header = TRUE,stringsAsFactors = FALSE)
+config <- read.table("variant_filtering.config", stringsAsFactors = FALSE)
+vv <- read.table("variant.table", comment.char = "", header = TRUE, stringsAsFactors = FALSE)
+###Read in genetic intolerance lists
+rvis <- read.table("RVIS_Unpublished_ExACv2_March2017.tsv", sep="\t", header = TRUE, stringsAsFactors = FALSE, quote="")
+gdis <- read.table("GDI_full_10282015.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
 ###remove columns that aren't needed
 ad <- ad[,-(2:5)]
 #gq <- gq[,-(2:5)] NOT USED currently
 gt <- gt[,-(2:5)]
 dp <- dp[,-(2:5)]
 vv <- vv[,-(8:10)]
-###rename rs id col to something other than "ID" for safety
+rvis <- rvis[c(1,4)]
+gdis <- gdis[c(1,3)]
+###rename rs id col to something other than "ID" for safety - Rename cols in genetic intolerance data
 names(vv)[4] <- "rsID"
-
+names(rvis) <- c("GENE","RVIS_Pct")
+names(gdis) <- c("GENE","GDIS_Phred")
 ###log starting number of variants - start
 varcount <- paste("##Variant Filter Script ## R-script Log - Starting variant count:",nrow(vv))
 write(varcount, file = "R_log.txt", append = TRUE)
@@ -259,6 +265,10 @@ write(clock, file = "R_log.txt", append = TRUE)
 varcount <- paste("##Variant Filter Script ## R-script Log - Final variants passing filters:",nrow(vv.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
 
+###Adding genetic intolerance scores
+vv.ft <- merge(vv.ft, rvis, by = "GENE", all.x = TRUE)[, union(names(vv.ft), names(rvis))]
+vv.ft <- merge(vv.ft, gdis, by = "GENE", all.x = TRUE)[, union(names(vv.ft), names(gdis))]
+vv.ft[is.na(vv.ft)] <- -9
 ###Add genotype information for remaining variants
 gt.ft <- gt[gt$ID %in% vv.ft$ID,]
 vvgt <- merge(vv.ft,gt.ft, sort = FALSE)
