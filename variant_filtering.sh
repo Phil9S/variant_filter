@@ -113,6 +113,7 @@ else
 	echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project folder already exists - Overwritting Content" | tee -a variantfilter.log
 fi
 cp ${CONFIG} ${PROJECT}_variantfiltering/variant_filtering.config
+cp 
 cd ${PROJECT}_variantfiltering
 
 
