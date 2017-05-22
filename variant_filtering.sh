@@ -141,11 +141,10 @@ GQ=$(grep GQ ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Minumum Genotype Quality set to ${GQ}" | tee -a variantfilter.log
 MISSING=$(grep MISSING ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of missing values at site to ${MISSING}" | tee -a variantfilter.log
-echo -e "\n"
 
 ###Progress checkpoint for variable check
 while true; do
-    read -p "## Variant Filter Script ## - Do you wish to install this program? (y/n) \n" yn
+    read -p "## Variant Filter Script ## - Do you wish to install this program? (y/n) " yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit;;

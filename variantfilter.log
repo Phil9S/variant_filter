@@ -1,0 +1,10 @@
+[05/22/17-11:22] ## Variant Filter Script ## - Script started
+[05/22/17-11:22] ## Variant Filter Script ## - Project name set to 
+[05/22/17-11:22] ## Variant Filter Script ## - Input VCF is 
+[05/22/17-11:22] ## Variant Filter Script ## - Output folder 
+[05/22/17-11:22] ## Variant Filter Script ## - Using config file 
+[05/22/17-11:22] ## Variant Filter Script ## - Temporary file retention set to 
+[05/22/17-11:22] ## Variant Filter Script ## - Minimum Mean Read Depth set to 20
+[05/22/17-11:22] ## Variant Filter Script ## - Maximum cohort Minor Allele Frequency set to 0.3
+[05/22/17-11:22] ## Variant Filter Script ## - Minumum Genotype Quality set to 30
+[05/22/17-11:22] ## Variant Filter Script ## - Maximum number of missing values at site to 0.5
