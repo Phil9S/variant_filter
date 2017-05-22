@@ -277,4 +277,4 @@ if [ "$TEMP" == "FALSE" ]; then
 	rm variant_orig.vcf
 	echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Removing temporary files...Done" | tee -a variantfilter.log 
 fi
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Variant Filter Script Finsihed" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Variant filter script finished" | tee -a variantfilter.log
