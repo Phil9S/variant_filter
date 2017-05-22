@@ -41,6 +41,10 @@ Options:
 
 --TEMP			Only option TRUE - automatically retains the temporary .table files and asociated intermediate files when script
 			is run using this option
+
+Example usage			
+
+./variant_filtering.sh --input /home/user/myvariants.vcf --output /home/user/ --project myvariants --config /home/user/variant_filtering.config --TEMP TRUE 
 		"			               
 		exit
 	fi
@@ -85,17 +89,42 @@ done
 
 
 ###ERROR CATCHING AND ARGUMENT CHECKS
-
-
-
-
-
-
-
-
+###Input
+if  [[ ${INPUT} == "NULL" ]]; then
+	echo -e "## Variant Filter Script ## - ERROR - You must provide an input file - Please use --input arguement or see the Help options (--help)"
+	exit
+fi
+if [[ ! -f ${INPUT} ]]; then
+	echo -e "## Variant Filter Script ## - ERROR - The input provided does not exist - Please confirm the input file path"	
+	exit
+fi
+###OUTPUT
+if  [[ ${OUTPUT} == "NULL" ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - You must provide an output directory - Please use --output arguement or see the Help options (--help)"
+        exit
+fi
+if [[ ! -d ${OUTPUT} ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - The output provided does not exist - Please confirm the output file path"
+        exit
+fi
+###config
+if  [[ ${CONFIG} == "NULL" ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - You must provide an config file path - Please use --config arguement or see the Help options (--help)"
+        exit
+fi
+if [[ ! -f ${CONFIG} ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - The config file provided does not exist - Please confirm the config file path"
+        exit
+fi
+###TEMP status
+if [[ ${TEMP} -ne "FALSE" ]] && [[ ${TEMP} -ne "TRUE" ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - Unknown TEMP file string used - Please provide TRUE if you wish to retain temporary files"
+        exit
+fi
 
 
 ###Log start
+echo -e "\n"
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Script started" | tee -a variantfilter.log
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project name set to ${2}" | tee -a variantfilter.log
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Input VCF is ${2}" | tee -a variantfilter.log
@@ -112,7 +141,17 @@ GQ=$(grep GQ ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Minumum Genotype Quality set to ${GQ}" | tee -a variantfilter.log
 MISSING=$(grep MISSING ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of missing values at site to ${MISSING}" | tee -a variantfilter.log
+echo -e "\n"
 
+###Progress checkpoint for variable check
+while true; do
+    read -p "## Variant Filter Script ## - Do you wish to install this program? (y/n) \n" yn
+    case $yn in
+        [Yy]* ) break;;
+        [Nn]* ) exit;;
+        * ) echo "Please answer yes (y) or no (n)";;
+    esac
+done
 
 ###Run folder setup and config file availability
 if [[ ! -d ${OUTPUT}${PROJECT}_variantfiltering ]]; then
@@ -120,6 +159,8 @@ if [[ ! -d ${OUTPUT}${PROJECT}_variantfiltering ]]; then
 else
 	echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project folder already exists - Overwritting Content" | tee -a variantfilter.log
 fi
+
+###Migrate required ref files, config and logs to working directory
 cp ${CONFIG} ${OUTPUT}${PROJECT}_variantfiltering/variant_filtering.config
 cp RVIS_Unpublished_ExACv2_March2017.tsv ${OUTPUT}${PROJECT}_variantfiltering/RVIS_Unpublished_ExACv2_March2017.tsv
 cp GDI_full_10282015.tsv ${OUTPUT}${PROJECT}_variantfiltering/GDI_full_10282015.tsv
