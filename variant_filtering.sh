@@ -91,7 +91,7 @@ done
 ###ERROR CATCHING AND ARGUMENT CHECKS
 ###Input
 if  [[ ${INPUT} == "NULL" ]]; then
-	echo -e "## Variant Filter Script ## - ERROR - You must provide an input file - Please use --input arguement or see the Help options (--help)"
+	echo -e "## Variant Filter Script ## - ERROR - You must provide an input file - Please use --input arguement or see the help options (--help)"
 	exit
 fi
 if [[ ! -f ${INPUT} ]]; then
@@ -100,7 +100,7 @@ if [[ ! -f ${INPUT} ]]; then
 fi
 ###OUTPUT
 if  [[ ${OUTPUT} == "NULL" ]]; then
-        echo -e "## Variant Filter Script ## - ERROR - You must provide an output directory - Please use --output arguement or see the Help options (--help)"
+        echo -e "## Variant Filter Script ## - ERROR - You must provide an output directory - Please use --output arguement or see the help options (--help)"
         exit
 fi
 if [[ ! -d ${OUTPUT} ]]; then
@@ -109,7 +109,7 @@ if [[ ! -d ${OUTPUT} ]]; then
 fi
 ###config
 if  [[ ${CONFIG} == "NULL" ]]; then
-        echo -e "## Variant Filter Script ## - ERROR - You must provide an config file path - Please use --config arguement or see the Help options (--help)"
+        echo -e "## Variant Filter Script ## - ERROR - You must provide an config file path - Please use --config arguement or see the help options (--help)"
         exit
 fi
 if [[ ! -f ${CONFIG} ]]; then
@@ -126,11 +126,11 @@ fi
 ###Log start
 echo -e "\n"
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Script started" | tee -a variantfilter.log
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project name set to ${2}" | tee -a variantfilter.log
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Input VCF is ${2}" | tee -a variantfilter.log
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Output folder ${2}" | tee -a variantfilter.log
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Using config file ${2}" | tee -a variantfilter.log
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Temporary file retention set to ${2}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project name set to ${PROJECT}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Input VCF is ${INPUT}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Output folder ${OUTPUT}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Using config file ${CONFIG}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Temporary file retention set to ${TEMP}" | tee -a variantfilter.log
 
 ###config arugment settings
 MEANDP=$(grep MEANDP ${CONFIG} | cut -f2)
@@ -141,14 +141,28 @@ GQ=$(grep GQ ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Minumum Genotype Quality set to ${GQ}" | tee -a variantfilter.log
 MISSING=$(grep MISSING ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of missing values at site to ${MISSING}" | tee -a variantfilter.log
+G1000=$(grep G1000 ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - 1000 genomes rarity filter value set to ${G1000}" | tee -a variantfilter.log
+EXAC=$(grep EXAC ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - ExAC consortium rarity filter value set to ${EXAC}" | tee -a variantfilter.log
+CADD=$(grep CADD ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - CADD variant damage prediction threshold set to ${CADD}" | tee -a variantfilter.log
+HET=$(grep HET ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of heterozygous calls/site over all samples set to ${CADD}%" | tee -a variantfilter.log
+ADEPTH=$(grep ADEPTH ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum allelic depth for each site across all samples set to ${ADEPTH}" | tee -a variantfilter.log
+QUAL=$(grep QUAL ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum site QUAL threshold set to ${QUAL}" | tee -a variantfilter.log
+
+
 
 ###Progress checkpoint for variable check
 while true; do
-    read -p "## Variant Filter Script ## - Do you wish to use the variables set above? (y/n) " yn
+    read -p "[# User Input #] ## Variant Filter Script ## - Do you wish to use the variables set above? (y/n) " yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit;;
-        * ) echo "Please answer yes (y) or no (n)";;
+        * ) echo "[# User Input #] ## Variant Filter Script ## - Please answer yes (y) or no (n)";;
     esac
 done
 
@@ -156,11 +170,12 @@ done
 if [[ ! -d ${OUTPUT}${PROJECT}_variantfiltering ]]; then
 	mkdir ${OUTPUT}${PROJECT}_variantfiltering
 else
-	echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project folder already exists - Overwritting Content" | tee -a variantfilter.log
+	echo -e `date +[%D-%R]` "## Variant Filter Script ## - Project folder already exists - Overwritting content" | tee -a variantfilter.log
 fi
 
 ###Migrate required ref files, config and logs to working directory
 cp ${CONFIG} ${OUTPUT}${PROJECT}_variantfiltering/variant_filtering.config
+cp variant_filtering.R ${OUTPUT}${PROJECT}_variantfiltering/variant_filtering.R
 cp RVIS_Unpublished_ExACv2_March2017.tsv ${OUTPUT}${PROJECT}_variantfiltering/RVIS_Unpublished_ExACv2_March2017.tsv
 cp GDI_full_10282015.tsv ${OUTPUT}${PROJECT}_variantfiltering/GDI_full_10282015.tsv
 mv variantfilter.log ${OUTPUT}${PROJECT}_variantfiltering/variantfilter.log
@@ -182,7 +197,7 @@ sed -n '/#CHROM/,${p}' annotate.recode.vcf  > variant.table
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating intermediate files...Done" | tee -a variantfilter.log
 
 
-echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating INFO field tables..." | tee -a variantfilter.log 
+echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info field tables..." | tee -a variantfilter.log 
 ###Use bcftools to extract depth/genotype/INFO_field information
 bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' -o genotype.table variant_filtered.vcf
 sed -i 's/\[[0-9]\+\]//g' genotype.table
@@ -204,15 +219,15 @@ sed -i 's/:DP//g' sitedepth.table
 sed -i 's/:AD//g' allelicdepth.table
 sed -i 's/:GQ//g' genoqual.table
 
-echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating INFO field tables...Done" | tee -a variantfilter.log
+echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info field tables...Done" | tee -a variantfilter.log
 
 
 ###Generating annovar-annotation file for use as table - inc gMAF and damage predictions
-echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating Annovar annotation file..." | tee -a variantfilter.log
+echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file..." | tee -a variantfilter.log
 ${ANNO}annovar/convert2annovar.pl -format vcf4old annotate.recode.vcf --outfile annovarform > /dev/null 2>&1
 ${ANNO}annovar/table_annovar.pl annovarform ${ANNO}annovar/humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp144,dbnsfp30a,clinvar_20160302,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
 mv annotated.hg38_multianno.txt annovar.table
-echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating Annovar annotation file...Done" | tee -a variantfilter.log
+echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file...Done" | tee -a variantfilter.log
 
 
 ###Check file length for the correct number of rows - all .tables & annovar files should have the same number of rows = to each vcf record
@@ -260,11 +275,11 @@ rm annotate.recode.vcf
 
 
 ###Run R script to filter variants	
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script Started" | tee -a variantfilter.log	
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script started" | tee -a variantfilter.log	
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Completing filtering on consequence, allele frequency & rarity..." | tee -a variantfilter.log
-Rscript ../variant_filtering.R ${wd} > /dev/null 2>&1
+Rscript variant_filtering.R ${wd} > /dev/null 2>&1
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Completing filtering consequence, allele frequency & rarity...Done" | tee -a variantfilter.log
-
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script completed" | tee -a variantfilter.log
 ###Clean up temporary files
 if [ "$TEMP" == "FALSE" ]; then
 	echo -en `date +[%D-%R]` "## Variant Filter Script ## - Removing temporary files..." | tee -a variantfilter.log
@@ -274,7 +289,12 @@ if [ "$TEMP" == "FALSE" ]; then
 	rm genotype.table
 	rm sitedepth.table
 	rm variant.table
+	rm variant_filtered.vcf
+	rm GDI_full_10282015.tsv
+	rm RVIS_Unpublished_ExACv2_March2017.tsv
 	rm variant_orig.vcf
+	rm variant_filtering.R
+	rm variant_filtering.config
 	echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Removing temporary files...Done" | tee -a variantfilter.log 
 fi
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Variant filter script finished" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Script finished - Results file: ${OUTPUT}${PROJECT}_variantfiltering/variant_filtering_results.tsv" | tee -a variantfilter.log

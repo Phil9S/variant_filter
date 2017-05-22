@@ -53,7 +53,7 @@ vv$CADD <- anno$CADD_phred
 
 ###Damage filters
 ###import config file settings
-X1000g <- config$V2[config$V1 == "1000G"]
+X1000g <- config$V2[config$V1 == "G1000"]
 exac <- config$V2[config$V1 == "EXAC"]
 CADD <- config$V2[config$V1 == "CADD"]
 HET <- config$V2[config$V1 == "HET"]
