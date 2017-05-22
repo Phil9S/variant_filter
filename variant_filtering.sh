@@ -144,7 +144,7 @@ echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of missing
 
 ###Progress checkpoint for variable check
 while true; do
-    read -p "## Variant Filter Script ## - Do you wish to install this program? (y/n) " yn
+    read -p "## Variant Filter Script ## - Do you wish to use the variables set above? (y/n) " yn
     case $yn in
         [Yy]* ) break;;
         [Nn]* ) exit;;
