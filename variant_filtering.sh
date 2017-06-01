@@ -39,7 +39,7 @@ Options:
 			EXAC		Float		Filters in ExAC data for given rarity (RScript - AND logic with 1000G)
 			CADD		Interger	Filters CADD score for each site at the provided value
 
---TEMP			Only option TRUE - automatically retains the temporary .table files and asociated intermediate files when script
+--temp			Only option TRUE - automatically retains the temporary .table files and asociated intermediate files when script
 			is run using this option
 
 Example usage			
@@ -79,7 +79,7 @@ while [[ $# > 1 ]]
 		CONFIG=${2}
 		shift
 		;;
-		--TEMP)
+		--temp)
 		TEMP=${2}
 		shift
 		;;
@@ -277,7 +277,7 @@ rm annotate.recode.vcf
 ###Run R script to filter variants	
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script started" | tee -a variantfilter.log	
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Completing filtering on consequence, allele frequency & rarity..." | tee -a variantfilter.log
-Rscript variant_filtering.R ${wd} > /dev/null 2>&1
+Rscript variant_filtering.R ${wd}
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Completing filtering consequence, allele frequency & rarity...Done" | tee -a variantfilter.log
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script completed" | tee -a variantfilter.log
 ###Clean up temporary files
