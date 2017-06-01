@@ -2,7 +2,7 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
@@ -14,13 +14,13 @@ write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.2)", file 
 ##################################################################################################################
 
 ###Import data tables from bash script
-ad <- read.table("example_files/allelicdepth.table", header = TRUE, stringsAsFactors = FALSE)
-anno <- read.table("example_files/annovar.table", header = TRUE, sep = "\t", stringsAsFactors = FALSE, quote="")
+ad <- read.table("allelicdepth.table", header = TRUE, stringsAsFactors = FALSE)
+anno <- read.table("annovar.table", header = TRUE, sep = "\t", stringsAsFactors = FALSE, quote="")
 #gq <- read.table("genoqual.table", header = TRUE,stringsAsFactors = FALSE) NOT USED currently
-gt <- read.table("example_files/genotype.table", header = TRUE, stringsAsFactors = FALSE)
-dp <- read.table("example_files/sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
+gt <- read.table("genotype.table", header = TRUE, stringsAsFactors = FALSE)
+dp <- read.table("sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
 config <- read.table("variant_filtering.config", stringsAsFactors = FALSE)
-vv <- read.table("example_files/variant.table", comment.char = "", header = TRUE, stringsAsFactors = FALSE)
+vv <- read.table("variant.table", comment.char = "", header = TRUE, stringsAsFactors = FALSE)
 ###Read in genetic intolerance lists
 rvis <- read.table("RVIS_Unpublished_ExACv2_March2017.tsv", sep="\t", header = TRUE, stringsAsFactors = FALSE, quote="")
 gdis <- read.table("GDI_full_10282015.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
