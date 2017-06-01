@@ -2,7 +2,7 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
@@ -14,13 +14,13 @@ write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.2)", file 
 ##################################################################################################################
 
 ###Import data tables from bash script
-ad <- read.table("allelicdepth.table", header = TRUE, stringsAsFactors = FALSE)
-anno <- read.table("annovar.table", header = TRUE, sep = "\t", stringsAsFactors = FALSE, quote="")
+ad <- read.table("example_files/allelicdepth.table", header = TRUE, stringsAsFactors = FALSE)
+anno <- read.table("example_files/annovar.table", header = TRUE, sep = "\t", stringsAsFactors = FALSE, quote="")
 #gq <- read.table("genoqual.table", header = TRUE,stringsAsFactors = FALSE) NOT USED currently
-gt <- read.table("genotype.table", header = TRUE, stringsAsFactors = FALSE)
-dp <- read.table("sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
+gt <- read.table("example_files/genotype.table", header = TRUE, stringsAsFactors = FALSE)
+dp <- read.table("example_files/sitedepth.table", header = TRUE,stringsAsFactors = FALSE)
 config <- read.table("variant_filtering.config", stringsAsFactors = FALSE)
-vv <- read.table("variant.table", comment.char = "", header = TRUE, stringsAsFactors = FALSE)
+vv <- read.table("example_files/variant.table", comment.char = "", header = TRUE, stringsAsFactors = FALSE)
 ###Read in genetic intolerance lists
 rvis <- read.table("RVIS_Unpublished_ExACv2_March2017.tsv", sep="\t", header = TRUE, stringsAsFactors = FALSE, quote="")
 gdis <- read.table("GDI_full_10282015.tsv", sep = "\t", header = TRUE, stringsAsFactors = FALSE)
@@ -221,9 +221,12 @@ write(varcount, file = "R_log.txt", append = TRUE)
 ###all HET call gene sums - after functional exonic only - QUAL filtered
 agg_all_HET <- aggregate(vv.ft$HET_val, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
 agg_all_HOM <- aggregate(vv.ft$HOM_val*2, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
-agg_sum <- agg_all_HET[2] + agg_all_HOM[2]
-agg_all_HET[2] <- agg_sum
-agg_all <- agg_all_HET
+
+###Merge HET and HOMO values to single allele count - hom * 2
+agg_sum <- merge(agg_all_HET, agg_all_HOM, by="GENE", all = TRUE)
+agg_sum[4] <- agg_sum[2] + agg_sum[3]
+agg_sum <- agg_sum[,c(-2,-3)]
+agg_all <- agg_sum
 rm(agg_all_HET,agg_all_HOM,agg_sum)
 
 ###Counts for different types of variants - nonsynonymous (excluding splicing) class by either CONSEQUENCE OR TYPE
@@ -232,9 +235,11 @@ agg_nsyn_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV"
 
 agg_nsyn_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic" ]*2, 
                             by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic"]), drop = FALSE, FUN=sum)
-agg_nsyn_sum <- agg_nsyn_HET[2] + agg_nsyn_HOM[2]
-agg_nsyn_HET[2] <- agg_nsyn_sum
-agg_nsyn <- agg_nsyn_HET
+###Merge HET and HOMO values to single allele count - hom * 2
+agg_nsyn_sum <- merge(agg_nsyn_HET, agg_nsyn_HOM, by="GENE", all = TRUE)
+agg_nsyn_sum[4] <- agg_nsyn_sum[2] + agg_nsyn_sum[3]
+agg_nsyn_sum <- agg_nsyn_sum[,c(-2,-3)]
+agg_nsyn <- agg_nsyn_sum
 rm(agg_nsyn_HET,agg_nsyn_HOM,agg_nsyn_sum)
 
 ###Counts for different types of variants - Truncating (including stop loss) class by either CONSEQUENCE OR TYPE
@@ -249,9 +254,11 @@ agg_trunc_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "stopgain" | vv.ft
                                            | vv.ft$CONSEQUENCE == "frameshift insertion"]*2,
                              by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
                                                      | vv.ft$CONSEQUENCE == "frameshift insertion"]), drop = FALSE, FUN=sum)
-agg_trunc_sum <- agg_trunc_HET[2] + agg_trunc_HOM[2]
-agg_trunc_HET[2] <- agg_trunc_sum
-agg_trunc <- agg_trunc_HET
+###Merge HET and HOMO values to single allele count - hom * 2
+agg_trunc_sum <- merge(agg_trunc_HET, agg_trunc_HOM, by="GENE", all = TRUE)
+agg_trunc_sum[4] <- agg_trunc_sum[2] + agg_trunc_sum[3]
+agg_trunc_sum <- agg_trunc_sum[,c(-2,-3)]
+agg_trunc <- agg_trunc_sum
 rm(agg_trunc_HET,agg_trunc_HOM,agg_trunc_sum)
 
 ###Counts for different types of variants - OTHER - NON frameshifting/stoploss
@@ -264,12 +271,12 @@ agg_other_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "stoploss" | vv.ft
                                          | vv.ft$CONSEQUENCE == "nonframeshift insertion"]*2,
                            by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stoploss" | vv.ft$CONSEQUENCE == "nonframeshift deletion" 
                                                    | vv.ft$CONSEQUENCE == "nonframeshift insertion"]), drop = FALSE, FUN=sum)
-agg_other_sum <- agg_other_HET[2] + agg_other_HOM[2]
-agg_other_HET[2] <- agg_other_sum
-agg_other <- agg_other_HET
+###Merge HET and HOMO values to single allele count - hom * 2
+agg_other_sum <- merge(agg_other_HET, agg_other_HOM, by="GENE", all = TRUE)
+agg_other_sum[4] <- agg_other_sum[2] + agg_other_sum[3]
+agg_other_sum <- agg_other_sum[,c(-2,-3)]
+agg_other <- agg_other_sum
 rm(agg_other_HET,agg_other_HOM,agg_other_sum)
-
-###Counts for different types of variants - SPLICE SITE VARIANTS
 
 ##Counts for different types of variants - splicing class by either CONSEQUENCE OR TYPE
 if("-9" %in% vv.ft$CONSEQUENCE){
@@ -280,17 +287,23 @@ if("-9" %in% vv.ft$CONSEQUENCE){
   agg_splc_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]*2, 
                             by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]), 
                             drop = FALSE, FUN=sum)
-  agg_splc_sum <- agg_splc_HET[2] + agg_splc_HOM[2]
-  agg_splc_HET[2] <- agg_splc_sum
-  agg_splc <- agg_splc_HET
+  ###Merge HET and HOMO values to single allele count - hom * 2
+  agg_splc_sum <- merge(agg_splc_HET, agg_splc_HOM, by="GENE", all = TRUE)
+  agg_splc_sum[4] <- agg_splc_sum[2] + agg_splc_sum[3]
+  agg_splc_sum <- agg_splc_sum[,c(-2,-3)]
+  agg_splc <- agg_splc_sum
   rm(agg_splc_HET,agg_splc_HOM,agg_splc_sum)
 }
+
 ###merge splicing and OTHER counts - provided splice sites were found
 if(exists("agg_splc")){
-  agg_splc_other_sum <- agg_splc[2] + agg_other[2]
-  agg_other[2] <- agg_splc_other_sum
-  rm(agg_splc_other_sum)
+  agg_splcother_sum <- merge(agg_splc, agg_other, by="GENE", all = TRUE)
+  agg_splcother_sum[4] <- agg_splcother_sum[2] + agg_splcother_sum[3]
+  agg_splcother_sum <- agg_splcother_sum[,c(-2,-3)]
+  agg_other <- agg_splcother_sum
+  rm(agg_splcother_sum)
 }
+
 ###Gene count merging to single data.frame - replace na with 0
 agg_allnsyn <- merge(agg_all, agg_nsyn, by = "GENE", all = TRUE)
 names(agg_allnsyn)[2] <- "AC_all"
