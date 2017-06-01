@@ -2,7 +2,7 @@ rm(list = ls())
 args = commandArgs(trailingOnly=TRUE)
 ###set working directory and import arguments and libraries
 
-#setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
+setwd(args[1]) ##comment out and set manually if working locally - i.e. non-server side and without bash script
 require("stringr")
 clock <- as.character(Sys.time())
 
@@ -72,7 +72,7 @@ names(exonic.ft)[1] <- "ID"
 vv.ft <- vv[vv$ID %in% exonic.ft$ID,]
 
 ###log number of variants - func
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching functional consequence:",nrow(exonic.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants falling in exon/splice sites:",nrow(exonic.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################
@@ -87,7 +87,7 @@ names(func.ft)[1] <- "ID"
 vv.ft <- vv.ft[vv.ft$ID %in% func.ft$ID,]
 
 ###log number of variants - func
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching functional consequence:",nrow(func.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants with amino acid altering consequence:",nrow(func.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################
@@ -133,48 +133,6 @@ vv.ft$HET_rate <- hetpct
 vv.ft$HOM_rate <- hompct
 vv.ft$MISS_rate <- misspct
 rm(hetpct, hompct, misspct, calc, HETp, nonHOM, refHOM, miss, gtm)
-
-##################################################################################################################
-
-###aggregate mutation types and af counts - ONLY PERFORMED ON HET CALLS!
-###all HET call gene sums - after functional exonic only - QUAL filtered
-aggAF_all_HET <- aggregate(vv.ft$HET_val, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
-#
-##Counts for different types of variants - splicing class by either CONSEQUENCE OR TYPE
-aggAF_splc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ], 
-     by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]), drop = FALSE, FUN=sum)
-
-###Counts for different types of variants - nonsynonymous (excluding splicing) class by either CONSEQUENCE OR TYPE
-aggAF_nsyn_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic" ], 
-                        by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic"]), drop = FALSE, FUN=sum)
-
-###Counts for different types of variants - Truncating (including stop loss) class by either CONSEQUENCE OR TYPE
-aggAF_trunc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
-                                                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
-                                                                           | vv.ft$CONSEQUENCE == "frameshift insertion"
-                                                                           | vv.ft$CONSEQUENCE == "nonframeshift insertion"
-                                                                           | vv.ft$CONSEQUENCE == "nonframeshift deletion"],
-                   by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
-                                                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
-                                                                           | vv.ft$CONSEQUENCE == "frameshift insertion"
-                                                                           | vv.ft$CONSEQUENCE == "nonframeshift insertion"
-                                                                           | vv.ft$CONSEQUENCE == "nonframeshift deletion"]),
-                                                                           drop = FALSE, FUN=sum)
-###Gene count merging to single data.frame - replace na with 0
-aggAF_HET <- merge(aggAF_all_HET, aggAF_nsyn_HET, by = "GENE", all = TRUE)
-names(aggAF_HET)[2] <- "C_all"
-names(aggAF_HET)[3] <- "C_nsyn"
-aggAF_HET <- merge(aggAF_HET, aggAF_splc_HET, by = "GENE", all = TRUE)
-aggAF_HET <- merge(aggAF_HET, aggAF_trunc_HET, by = "GENE", all = TRUE)
-names(aggAF_HET)[4] <- "C_splc"
-names(aggAF_HET)[5] <- "C_trunc"
-aggAF_HET[is.na(aggAF_HET)] <- 0
-
-###merge the gene counts into the original vv.ft file - adding 4 columns - write table as output - rm variables
-###totals of subsets may not all sum to all due to certain combinations (e.g. exonic;splicing stoploss)
-vv.ft <- merge(vv.ft, aggAF_HET, by = 'GENE', sort = FALSE)[,union(names(vv.ft), names(aggAF_HET))]
-write.table(aggAF_HET,file = "variant_filtering_GeneVarCounts.tsv", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
-rm(aggAF_all_HET, aggAF_nsyn_HET, aggAF_splc_HET, aggAF_trunc_HET, aggAF_HET)
 
 ##################################################################################################################
 
@@ -254,8 +212,107 @@ vv.ft <- vv.ft[vv.ft$ID %in% af.ft$ID,]
 rm(af.ft,i)
 
 ###Variants filtered on no variants af above than 0.3
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants with at least single AF > threshold:",nrow(vv.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants with at least single alt AD > threshold:",nrow(vv.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
+
+##################################################################################################################
+
+###aggregate mutation types and af counts - ONLY PERFORMED ON HET CALLS!
+###all HET call gene sums - after functional exonic only - QUAL filtered
+agg_all_HET <- aggregate(vv.ft$HET_val, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
+agg_all_HOM <- aggregate(vv.ft$HOM_val*2, by=list(GENE=vv.ft$GENE), drop = FALSE, FUN=sum)
+agg_sum <- agg_all_HET[2] + agg_all_HOM[2]
+agg_all_HET[2] <- agg_sum
+agg_all <- agg_all_HET
+rm(agg_all_HET,agg_all_HOM,agg_sum)
+
+###Counts for different types of variants - nonsynonymous (excluding splicing) class by either CONSEQUENCE OR TYPE
+agg_nsyn_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic" ], 
+                            by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic"]), drop = FALSE, FUN=sum)
+
+agg_nsyn_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic" ]*2, 
+                            by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV" & vv.ft$TYPE == "exonic"]), drop = FALSE, FUN=sum)
+agg_nsyn_sum <- agg_nsyn_HET[2] + agg_nsyn_HOM[2]
+agg_nsyn_HET[2] <- agg_nsyn_sum
+agg_nsyn <- agg_nsyn_HET
+rm(agg_nsyn_HET,agg_nsyn_HOM,agg_nsyn_sum)
+
+###Counts for different types of variants - Truncating (including stop loss) class by either CONSEQUENCE OR TYPE
+agg_trunc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
+                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                           | vv.ft$CONSEQUENCE == "frameshift insertion"],
+                             by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "stoploss" 
+                                           | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                           | vv.ft$CONSEQUENCE == "frameshift insertion"]),drop = FALSE, FUN=sum)
+
+agg_trunc_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                           | vv.ft$CONSEQUENCE == "frameshift insertion"]*2,
+                             by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                                     | vv.ft$CONSEQUENCE == "frameshift insertion"]), drop = FALSE, FUN=sum)
+agg_trunc_sum <- agg_trunc_HET[2] + agg_trunc_HOM[2]
+agg_trunc_HET[2] <- agg_trunc_sum
+agg_trunc <- agg_trunc_HET
+rm(agg_trunc_HET,agg_trunc_HOM,agg_trunc_sum)
+
+###Counts for different types of variants - OTHER - NON frameshifting/stoploss
+agg_other_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "stoploss" | vv.ft$CONSEQUENCE == "nonframeshift deletion" 
+                                        | vv.ft$CONSEQUENCE == "nonframeshift insertion"],
+                          by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stoploss" | vv.ft$CONSEQUENCE == "nonframeshift deletion" 
+                                                  | vv.ft$CONSEQUENCE == "nonframeshift insertion"]),drop = FALSE, FUN=sum)
+
+agg_other_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "stoploss" | vv.ft$CONSEQUENCE == "nonframeshift deletion" 
+                                         | vv.ft$CONSEQUENCE == "nonframeshift insertion"]*2,
+                           by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stoploss" | vv.ft$CONSEQUENCE == "nonframeshift deletion" 
+                                                   | vv.ft$CONSEQUENCE == "nonframeshift insertion"]), drop = FALSE, FUN=sum)
+agg_other_sum <- agg_other_HET[2] + agg_other_HOM[2]
+agg_other_HET[2] <- agg_other_sum
+agg_other <- agg_other_HET
+rm(agg_other_HET,agg_other_HOM,agg_other_sum)
+
+###Counts for different types of variants - SPLICE SITE VARIANTS
+
+##Counts for different types of variants - splicing class by either CONSEQUENCE OR TYPE
+if("-9" %in% vv.ft$CONSEQUENCE){
+  agg_splc_HET <- aggregate(vv.ft$HET_val[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ], 
+                    by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]), 
+                    drop = FALSE, FUN=sum)
+
+  agg_splc_HOM <- aggregate(vv.ft$HOM_val[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]*2, 
+                            by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "-9" | vv.ft$TYPE == "splicing" | vv.ft$TYPE == "exonic;splicing" ]), 
+                            drop = FALSE, FUN=sum)
+  agg_splc_sum <- agg_splc_HET[2] + agg_splc_HOM[2]
+  agg_splc_HET[2] <- agg_splc_sum
+  agg_splc <- agg_splc_HET
+  rm(agg_splc_HET,agg_splc_HOM,agg_splc_sum)
+}
+###merge splicing and OTHER counts - provided splice sites were found
+if(exists("agg_splc")){
+  agg_splc_other_sum <- agg_splc[2] + agg_other[2]
+  agg_other[2] <- agg_splc_other_sum
+  rm(agg_splc_other_sum)
+}
+###Gene count merging to single data.frame - replace na with 0
+agg_allnsyn <- merge(agg_all, agg_nsyn, by = "GENE", all = TRUE)
+names(agg_allnsyn)[2] <- "AC_all"
+names(agg_allnsyn)[3] <- "AC_nsyn"
+agg_alltruncnsyn <- merge(agg_allnsyn, agg_trunc, by = "GENE", all = TRUE)
+names(agg_alltruncnsyn)[4] <- "AC_trnc"
+agg_alltruncnsyn <- merge(agg_alltruncnsyn, agg_other, by = "GENE", all = TRUE)
+names(agg_alltruncnsyn)[5] <- "AC_other"
+agg_alltruncnsyn[is.na(agg_alltruncnsyn)] <- 0
+
+rm(agg_all,agg_allnsyn,agg_trunc,agg_nsyn,agg_other)
+
+##report number of lines in which the variant counter doesn't report a matching value between all and the sub columns
+allelecount_false_sum <- length(grep("FALSE", agg_alltruncnsyn[2] == agg_alltruncnsyn[3] + agg_alltruncnsyn[4] + agg_alltruncnsyn[5]))
+varcount <- paste("##Variant Filter Script ## R-script Log - Number of rows with non-matching allele counts:",allelecount_false_sum)
+write(varcount, file = "R_log.txt", append = TRUE)
+
+###merge the gene counts into the original vv.ft file - adding 4 columns - write table as output - rm variables
+###totals of subsets may not all sum to all due to certain combinations (e.g. exonic;splicing stoploss)
+vv.ft <- merge(vv.ft, agg_alltruncnsyn, by = 'GENE', sort = FALSE)[,union(names(vv.ft), names(agg_alltruncnsyn))]
+write.table(agg_alltruncnsyn,file = "variant_filtering_GeneAlleleCounts.tsv", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+rm(agg_alltruncnsyn)
 
 ##################################################################################################################
 
