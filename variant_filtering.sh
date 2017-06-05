@@ -153,8 +153,8 @@ ADEPTH=$(grep ADEPTH ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum allelic depth for each site across all samples set to ${ADEPTH}" | tee -a variantfilter.log
 QUAL=$(grep QUAL ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum site QUAL threshold set to ${QUAL}" | tee -a variantfilter.log
-
-
+SAMP_NUM=$(grep SAMP_NUM ${CONFIG} | cut -f2)
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Seperate genotype file generated if sample number exceeds ${SAMP_NUM}" | tee -a variantfilter.log
 
 ###Progress checkpoint for variable check
 while true; do

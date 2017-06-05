@@ -9,7 +9,7 @@ clock <- as.character(Sys.time())
 
 ###default variables & log start
 write(clock, file = "R_log.txt", append = FALSE)
-write("##Variant Filter Script ## R-script Log - Log Begin (Version 2.2)", file = "R_log.txt", append = TRUE)
+write("##Variant Filter Script ## R-script Log - Log Begin (Version 3.0)", file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################
 
@@ -48,7 +48,9 @@ vv$CONSEQUENCE <- anno$ExonicFunc.refGene
 vv$X1000G <- anno$X1000g2015aug_all
 vv$EXAC <- anno$ExAC_ALL
 vv$CADD <- anno$CADD_phred
-
+###AF - making novel results = 0 and not -9 for freq calculations
+vv$X1000G[vv$X1000G == "-9"] <- 0
+vv$EXAC[vv$EXAC == "-9"] <- 0
 ##################################################################################################################
 
 ###Damage filters
@@ -59,6 +61,7 @@ CADD <- config$V2[config$V1 == "CADD"]
 HET <- config$V2[config$V1 == "HET"]
 ADEPTH <- config$V2[config$V1 == "ADEPTH"]
 QUAL <- config$V2[config$V1 == "QUAL"]
+SAMP_NUM <- config$V2[config$V1 == "SAMP_NUM"]
 
 ##################################################################################################################
 
@@ -128,7 +131,8 @@ calc <- cbind(refHOM,HETp,nonHOM,miss)
 hetpct <- ((calc[,2] / (calc[,1] + calc[,2] + calc[,3]))*100)
 hompct <- ((calc[,3] / (calc[,1] + calc[,2] + calc[,3]))*100)
 misspct <- ((calc[,4] / length(gt[1,-1])*100))
-###append values to new columns in vv.ft
+###append values to new columns in vv.ft 
+###same purpose
 vv.ft$HET_rate <- hetpct
 vv.ft$HOM_rate <- hompct
 vv.ft$MISS_rate <- misspct
@@ -169,33 +173,25 @@ rm(hethom.ft)
 
 ##################################################################################################################
 
+
 ###performing allelic depth transformation to allele percent
 ###make copy of allelicdepth(ad)
 af <- ad[ad$ID %in% vv.ft$ID,]
-###loop over each sample column
-for(i in 2:ncol(af)){
-  ###split ad values on ,  to generate a maj allelic read depth and min allelic read depth
-  ###replace empty cells in second col with "." to match first
-  alfe <- as.data.frame(str_split(af[,i],",",simplify = TRUE),stringsAsFactors = FALSE)
-  alfe$V2[alfe$V2 %in% ""] <- "."
-  d <- data.frame(x=rep(0,nrow(af)))
-  ###loop over new maj/min read depth dataframe & convert to float or replace with na
-  for(r in 1:nrow(alfe)){
-    if(alfe[r,2] == "."){d[r,1] <- NA}
-    else{
-      afmaj <- as.numeric(alfe[r,1])
-      afmin <- as.numeric(alfe[r,2])
-      aftotal <- afmaj + afmin
-      afperct <- (afmin/aftotal)
-      d[r,1] <- afperct}
-  }
-  ###replace column in af with new float/na values
-  af[,i] <- as.data.frame(d)
-  rm(d)
+af[af == "."] <- NA
+af_index <- af[1]
+###function defining the str_split and arithmatic for each cell
+pct_func <- function(x){
+  (as.numeric(str_split_fixed(x, ",",2)[,2]) /
+     (as.numeric(str_split_fixed(x, ",",2)[,1]) +
+        as.numeric(str_split_fixed(x, ",",2)[,2])))
 }
+### apply function across all cells in af
+ad_pct <- as.data.frame(apply(af[2:ncol(af)],c(1,2), FUN = pct_func))
+af <- cbind(af_index, ad_pct)
+
 ###tidy variables and tables
-rm(alfe,afmaj,afmin,afperct,aftotal,i,r)
- 
+rm(af_index, ad_pct)
+
 ###filter on variants with no af rate above threshold
 af.ft <- data.frame(x=rep(0,nrow(af)))
 for(i in 1:nrow(af)){
@@ -206,7 +202,7 @@ for(i in 1:nrow(af)){
     }
 }
 names(af.ft)[1] <- "ID"
-af.ft <- subset(af.ft, (af.ft[,1] != "NaN"))
+af.ft <- subset(af.ft, (!is.na(af.ft[,1])))
 
 vv.ft <- vv.ft[vv.ft$ID %in% af.ft$ID,]
 rm(af.ft,i)
@@ -324,8 +320,43 @@ write(varcount, file = "R_log.txt", append = TRUE)
 ###merge the gene counts into the original vv.ft file - adding 4 columns - write table as output - rm variables
 ###totals of subsets may not all sum to all due to certain combinations (e.g. exonic;splicing stoploss)
 vv.ft <- merge(vv.ft, agg_alltruncnsyn, by = 'GENE', sort = FALSE)[,union(names(vv.ft), names(agg_alltruncnsyn))]
-write.table(agg_alltruncnsyn,file = "variant_filtering_GeneAlleleCounts.tsv", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
+write.table(agg_alltruncnsyn,file = "variant_filtering_GeneAC.tsv", quote = FALSE, sep = "\t", col.names = TRUE, row.names = FALSE)
 rm(agg_alltruncnsyn)
+
+##################################################################################################################
+### aggregate AF per gene using rare variants - truncating and nonsynonymous
+### TRUNCATING aggregation - X1000G
+AF_gene_truncX1000 <- aggregate(vv.ft$X1000G[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                        | vv.ft$CONSEQUENCE == "frameshift insertion"],
+                   by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                        | vv.ft$CONSEQUENCE == "frameshift insertion"]),drop = FALSE, FUN=sum)
+### TRUNCATING aggregation - EXAC
+AF_gene_truncEXAC <- aggregate(vv.ft$EXAC[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                             | vv.ft$CONSEQUENCE == "frameshift insertion"],
+                                by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "stopgain" | vv.ft$CONSEQUENCE == "frameshift deletion" 
+                                                        | vv.ft$CONSEQUENCE == "frameshift insertion"]),drop = FALSE, FUN=sum)
+###Merge and take max of EXAC & 1000G
+AF_gene_trunc <- merge(AF_gene_truncX1000, AF_gene_truncEXAC, by = "GENE", all = TRUE)
+AF_gene_trunc$AggAF_Trunc <- apply(AF_gene_trunc[2:3], 1, function(x) max(x))
+AF_gene_trunc <- AF_gene_trunc[-(2:3)]
+
+
+### NONSYNONYMOUS aggregation - X1000G
+AF_gene_nsynX1000 <- aggregate(vv.ft$X1000G[vv.ft$CONSEQUENCE == "nonsynonymous SNV"],
+                                by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV"]),drop = FALSE, FUN=sum)
+### NONSYNONYMOUS aggregation - EXAC
+AF_gene_nsynEXAC <- aggregate(vv.ft$EXAC[vv.ft$CONSEQUENCE == "nonsynonymous SNV"],
+                               by=list(GENE=vv.ft$GENE[vv.ft$CONSEQUENCE == "nonsynonymous SNV"]),drop = FALSE, FUN=sum)
+###Merge and take max of EXAC & 1000G
+AF_gene_nsyn <- merge(AF_gene_nsynX1000, AF_gene_nsynEXAC, by = "GENE", all = TRUE)
+AF_gene_nsyn$AggAF_nsyn <- apply(AF_gene_nsyn[2:3], 1, function(x) max(x))
+AF_gene_nsyn <- AF_gene_nsyn[-(2:3)]
+
+###Merging to main dataframe and removing NA values
+AF_gene <- merge(AF_gene_trunc, AF_gene_nsyn, by = "GENE", all = TRUE)
+AF_gene[is.na(AF_gene)] <- -9
+vv.ft <- merge(vv.ft, AF_gene, by = "GENE", all.x = TRUE)[, union(names(vv.ft), names(AF_gene))]
+rm(AF_gene, AF_gene_nsyn, AF_gene_nsynEXAC, AF_gene_nsynX1000, AF_gene_trunc, AF_gene_truncEXAC, AF_gene_truncX1000)
 
 ##################################################################################################################
 
@@ -340,13 +371,27 @@ vv.ft <- merge(vv.ft, rvis, by = "GENE", all.x = TRUE)[, union(names(vv.ft), nam
 vv.ft <- merge(vv.ft, gdis, by = "GENE", all.x = TRUE)[, union(names(vv.ft), names(gdis))]
 vv.ft[is.na(vv.ft)] <- -9
 ###Add genotype information for remaining variants
-gt.ft <- gt[gt$ID %in% vv.ft$ID,]
-vvgt <- merge(vv.ft,gt.ft, sort = FALSE)
+if(ncol(gt) > SAMP_NUM){
+  gt.ft <- gt[gt$ID %in% vv.ft$ID,]
+  vvgt <- vv.ft
+  clock <- as.character(Sys.time())
+  write(clock, file = "R_log.txt", append = TRUE)
+  varcount <- paste("##Variant Filter Script ## R-script Log - Seperate genotype file generated",nrow(vv.ft))
+  write(varcount, file = "R_log.txt", append = TRUE)
+  names(gt.ft)[1] <- "Id"
+  write.table(gt.ft,file = "variant_filtering_results_GT.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
+} else {
+  gt.ft <- gt[gt$ID %in% vv.ft$ID,]
+  vvgt <- merge(vv.ft,gt.ft, sort = FALSE)
+}
 ###rename ID col - issues with opening files in excel with "ID" as the first value
 names(vvgt)[1] <- "Id"
 names(af)[1] <- "Id"
 
 ##################################################################################################################
+### Col trimming for final tables
+drop_col <- c("HET_rate","HOM_rate")
+vvgt <- vvgt[ , !(names(vvgt) %in% drop_col)]
 
 ###write filtered table out
 write.table(vvgt,file = "variant_filtering_results.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
