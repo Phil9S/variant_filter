@@ -143,22 +143,27 @@ rm(hetpct, hompct, misspct, calc, HETp, nonHOM, refHOM, miss, gtm)
 ###filter variant ids that are below values for both 1000g & exac_all
 rarity.ft <- as.data.frame(anno$ID[anno$X1000g2015aug_all < X1000g & anno$ExAC_ALL < exac])
 names(rarity.ft)[1] <- "ID"
+
 ###filter variant ids that are above cadd
 cadd.ft <- as.data.frame(anno$ID[anno$CADD_phred > CADD | anno$CADD_phred < 0])
 names(cadd.ft)[1] <- "ID"
 
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching CADD threshold:",nrow(cadd.ft))
-write(varcount, file = "R_log.txt", append = TRUE)
-
-###filter vv by rarity and cadd score
-raritycadd.ft <- merge(rarity.ft, cadd.ft,sort = FALSE)
-vv.ft <- vv.ft[vv.ft$ID %in% raritycadd.ft$ID,]
+### filter by rarity
+vv.ft <- vv.ft[vv.ft$ID %in% rarity.ft$ID,]
 
 ###log number of variants - rarity
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity threshold:",nrow(rarity.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity threshold:",nrow(vv.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
+
+###filter by cadd score
+vv.ft <- vv.ft[vv.ft$ID %in% cadd.ft$ID,]
+
+### log number of variant - cadd score
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching CADD threshold:",nrow(vv.ft))
+write(varcount, file = "R_log.txt", append = TRUE)
+
 ###tidy variables
-rm(rarity.ft,raritycadd.ft,func.ft,qual.ft)
+rm(rarity.ft,func.ft,qual.ft)
 
 ##################################################################################################################
 
