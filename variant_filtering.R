@@ -147,12 +147,15 @@ names(rarity.ft)[1] <- "ID"
 cadd.ft <- as.data.frame(anno$ID[anno$CADD_phred > CADD | anno$CADD_phred < 0])
 names(cadd.ft)[1] <- "ID"
 
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching CADD threshold:",nrow(cadd.ft))
+write(varcount, file = "R_log.txt", append = TRUE)
+
 ###filter vv by rarity and cadd score
 raritycadd.ft <- merge(rarity.ft, cadd.ft,sort = FALSE)
 vv.ft <- vv.ft[vv.ft$ID %in% raritycadd.ft$ID,]
 
 ###log number of variants - rarity
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity & CADD threshold:",nrow(vv.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching rarity threshold:",nrow(rarity.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
 ###tidy variables
 rm(rarity.ft,raritycadd.ft,func.ft,qual.ft)
@@ -173,24 +176,37 @@ rm(hethom.ft)
 
 ##################################################################################################################
 
-
 ###performing allelic depth transformation to allele percent
 ###make copy of allelicdepth(ad)
 af <- ad[ad$ID %in% vv.ft$ID,]
 af[af == "."] <- NA
+
+### handling multiallelic sites for allelic depth
+### grep all multiallelic sites and remove from normal allelic depth calculations
+multi_all <- unique(unlist(apply(af, 2, function (x) grep("([0-9]+,){2,}[0-9]+", x))))
+af_multi <- af[multi_all,]
+af_multi <- as.data.frame(af_multi$ID)
+### list of variant sites with multiallelic sites - reported
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants with multi-allelic sites (retained):",nrow(af_multi))
+write(varcount, file = "R_log.txt", append = TRUE)
+
+### removing multi-allelic from main list
+af <- af[-multi_all,]
+###Indexing and generation of percent allelic depth info
 af_index <- af[1]
-###function defining the str_split and arithmatic for each cell
-pct_func <- function(x){
-  (as.numeric(str_split_fixed(x, ",",2)[,2]) /
-     (as.numeric(str_split_fixed(x, ",",2)[,1]) +
-        as.numeric(str_split_fixed(x, ",",2)[,2])))
-}
-### apply function across all cells in af
-ad_pct <- as.data.frame(apply(af[2:ncol(af)],c(1,2), FUN = pct_func))
+af_mat1 <- as.data.frame(apply(af[2:ncol(af)], c(1,2), FUN = function(x) str_split_fixed(x, ",",2)[,1]))
+af_mat2 <- as.data.frame(apply(af[2:ncol(af)], c(1,2), FUN = function(x) str_split_fixed(x, ",",2)[,2]))
+af_mat1[af_mat1 == ""] <- NA
+af_mat2[af_mat2 == ""] <- NA
+
+### conversion to matrix and perform matrix arithematic
+af_mat1 <- as.matrix(apply(af_mat1,2,function(x) as.numeric(x)))
+af_mat2 <- as.matrix(apply(af_mat2,2,function(x) as.numeric(x)))
+ad_pct <- af_mat2 / (af_mat1 + af_mat2)
 af <- cbind(af_index, ad_pct)
 
-###tidy variables and tables
-rm(af_index, ad_pct)
+
+rm(af_index, ad_pct, af_mat1, af_mat2, multi_all)
 
 ###filter on variants with no af rate above threshold
 af.ft <- data.frame(x=rep(0,nrow(af)))
@@ -203,6 +219,10 @@ for(i in 1:nrow(af)){
 }
 names(af.ft)[1] <- "ID"
 af.ft <- subset(af.ft, (!is.na(af.ft[,1])))
+
+### adding multi-allelic
+names(af_multi)[1] <- "ID"
+af.ft1 <- rbind(af.ft, af_multi)
 
 vv.ft <- vv.ft[vv.ft$ID %in% af.ft$ID,]
 rm(af.ft,i)
