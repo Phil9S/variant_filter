@@ -186,17 +186,6 @@ rm(hethom.ft)
 af <- ad[ad$ID %in% vv.ft$ID,]
 af[af == "."] <- NA
 
-### handling multiallelic sites for allelic depth
-### grep all multiallelic sites and remove from normal allelic depth calculations
-multi_all <- unique(unlist(apply(af, 2, function (x) grep("([0-9]+,){2,}[0-9]+", x))))
-af_multi <- af[multi_all,]
-af_multi <- as.data.frame(af_multi$ID)
-### list of variant sites with multiallelic sites - reported
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants with multi-allelic sites (retained):",nrow(af_multi))
-write(varcount, file = "R_log.txt", append = TRUE)
-
-### removing multi-allelic from main list
-af <- af[-multi_all,]
 ###Indexing and generation of percent allelic depth info
 af_index <- af[1]
 af_mat1 <- as.data.frame(apply(af[2:ncol(af)], c(1,2), FUN = function(x) str_split_fixed(x, ",",2)[,1]))
@@ -211,7 +200,7 @@ ad_pct <- af_mat2 / (af_mat1 + af_mat2)
 af <- cbind(af_index, ad_pct)
 
 
-rm(af_index, ad_pct, af_mat1, af_mat2, multi_all)
+rm(af_index, ad_pct, af_mat1, af_mat2)
 
 ###filter on variants with no af rate above threshold
 af.ft <- data.frame(x=rep(0,nrow(af)))
@@ -224,10 +213,6 @@ for(i in 1:nrow(af)){
 }
 names(af.ft)[1] <- "ID"
 af.ft <- subset(af.ft, (!is.na(af.ft[,1])))
-
-### adding multi-allelic
-names(af_multi)[1] <- "ID"
-af.ft1 <- rbind(af.ft, af_multi)
 
 vv.ft <- vv.ft[vv.ft$ID %in% af.ft$ID,]
 rm(af.ft,i)

@@ -3,7 +3,8 @@
 ###Static variables
 BUILD="hg38"
 ANNO="/data/Resources/Software/"
-
+GATK="/data/Resources/Software/GenomeAnalysisTK.jar"
+REF="/data/Resources/hg38.bwa/hg38.bwaMergeAll.fa"
 
 ###Command-line variables and script start
 INPUT="NULL"
@@ -190,22 +191,27 @@ mv variant_orig.recode.vcf variant_filtered.vcf
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Filtering VCF on specified values...Done" | tee -a variantfilter.log
 
 
+###Spliting of multiallelic sites
+echo -en `date +[%D-%R]` "## Variant Filter Script ## - Splitting multiallelic sites..." | tee -a variantfilter.log
+java -jar ${GATK} -T LeftAlignAndTrimVariants -R ${REF} --variant variant_filtered.vcf -o variant_filtered.bi.vcf --splitMultiallelics > /dev/null 2>&1
+echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Splitting multiallelic sites...Done" | tee -a variantfilter.log
+
 ###removing header command & generating intermediate files with bcftools
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating intermediate files..." | tee -a variantfilter.log
-vcftools --vcf variant_filtered.vcf --max-indv 0 --recode --out annotate > /dev/null 2>&1
+vcftools --vcf variant_filtered.bi.vcf --max-indv 0 --recode --out annotate > /dev/null 2>&1
 sed -n '/#CHROM/,${p}' annotate.recode.vcf  > variant.table
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating intermediate files...Done" | tee -a variantfilter.log
 
 
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info field tables..." | tee -a variantfilter.log 
 ###Use bcftools to extract depth/genotype/INFO_field information
-bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' -o genotype.table variant_filtered.vcf
+bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%GT]\n' -o genotype.table variant_filtered.bi.vcf
 sed -i 's/\[[0-9]\+\]//g' genotype.table
-bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%DP]\n' -o sitedepth.table variant_filtered.vcf
+bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%DP]\n' -o sitedepth.table variant_filtered.bi.vcf
 sed -i 's/\[[0-9]\+\]//g' sitedepth.table
-bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%AD]\n' -o allelicdepth.table variant_filtered.vcf
+bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%AD]\n' -o allelicdepth.table variant_filtered.bi.vcf
 sed -i 's/\[[0-9]\+\]//g' allelicdepth.table
-bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%GQ]\n' -o genoqual.table variant_filtered.vcf
+bcftools query --print-header -f '%CHROM\t%POS\t%REF\t%ALT[\t%GQ]\n' -o genoqual.table variant_filtered.bi.vcf
 sed -i 's/\[[0-9]\+\]//g' genoqual.table
 ###removing incorrect #CHROM to CHROM for R input
 sed -i 's/# CHROM/CHROM/' genotype.table
@@ -272,12 +278,12 @@ wd=`pwd`
 ###File clean up
 rm annovarform
 rm annotate.recode.vcf
-
+rm *.idx
 
 ###Run R script to filter variants	
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script started" | tee -a variantfilter.log	
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Completing filtering on consequence, allele frequency & rarity..." | tee -a variantfilter.log
-Rscript variant_filtering.R ${wd}
+Rscript variant_filtering.R ${wd} > /dev/null 2>&1
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Completing filtering consequence, allele frequency & rarity...Done" | tee -a variantfilter.log
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - R Script completed" | tee -a variantfilter.log
 ###Clean up temporary files
@@ -290,6 +296,7 @@ if [ "$TEMP" == "FALSE" ]; then
 	rm sitedepth.table
 	rm variant.table
 	rm variant_filtered.vcf
+	rm variant_filtered.bi.vcf
 	rm GDI_full_10282015.tsv
 	rm RVIS_Unpublished_ExACv2_March2017.tsv
 	rm variant_orig.vcf
