@@ -141,7 +141,7 @@ rm(hetpct, hompct, misspct, calc, HETp, nonHOM, refHOM, miss, gtm)
 ##################################################################################################################
 
 ###filter variant ids that are below values for both 1000g & exac_all
-rarity.ft <- as.data.frame(anno$ID[anno$X1000g2015aug_all < X1000g & anno$ExAC_ALL < exac])
+rarity.ft <- as.data.frame(anno$ID[anno$X1000g2015aug_all < X1000g | anno$ExAC_ALL < exac])
 names(rarity.ft)[1] <- "ID"
 
 ###filter variant ids that are above cadd
