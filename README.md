@@ -72,6 +72,11 @@ A set of scripts for filtering multi-sample VCF files to generate candidate vari
 * Contains the parameters used and declares which thresholds were specified in the variant_filtering.config file
 * Mainly just for error checks and confirming the script has completed
 
+## 6. variant_comphet-biallelic_results.tsv
+
+* Calculates sets of variants that are potentially compound heterozygous
+* Sites are retained if two or more occur in the same sample and gene simultanously
+
 ##
 
 ### Required dependencies and software:
