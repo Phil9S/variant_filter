@@ -403,7 +403,31 @@ names(af)[1] <- "Id"
 drop_col <- c("HET_rate","HOM_rate")
 vvgt <- vvgt[ , !(names(vvgt) %in% drop_col)]
 
-###write filtered table out
-write.table(vvgt,file = "variant_filtering_results.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
-write.table(af,file = "variant_filtering_results_AD.tsv",sep = "\t",row.names = FALSE, quote = FALSE)
+##################################################################################################################
+###Generating biallelic - potential compound het calls
+#form empty vector
+bi_allelic_var <- character()
+##for each unique gene, identify samples where number of non-ref calls > 1 i.e. two or more het calls for one gene in one sample
+for(i in unique(vvgt$GENE)){
+  bi_gene <- vvgt[vvgt$GENE == i,]
+  bi_gene[26:ncol(bi_gene)] <- sapply(bi_gene[26:ncol(bi_gene)],FUN = function(x) as.numeric(as.character(x)))
+  bi_gene[bi_gene == "-9"] <- NA
+  bi_count <- as.data.frame(apply(bi_gene[26:ncol(bi_gene)],2, function(x) sum(as.numeric(x),na.rm = TRUE)))
+  bi_count$names <- row.names(bi_count)
+  sample_list <- bi_count$names[bi_count[1] > 1]
+  ## above generates a list of samples with two or more het calls per gene
+  ## secondary loop finds the variant Id numbers for the variants called in each sample in sample_list per gene
+  for(s in sample_list){
+    p <- bi_gene$Id[bi_gene[s] == 1]
+    p <- p[!is.na(p)]
+    bi_allelic_var <- append(bi_allelic_var,p)
+  ## appends each successive loop of variant Ids that are potentially biallelic/compound het
+  }
+}
+### select filtered ids from the main output dataframe
+vvgt_bi <- vvgt[vvgt$Id %in% bi_allelic_var,]
 
+###write filtered table out
+write.table(vvgt,file = "variant_filtering_results.tsv",sep = "\t",row.names = FALSE,quote = FALSE)
+write.table(af,file = "variant_filtering_results_AD.tsv",sep = "\t",row.names = FALSE,quote = FALSE)
+write.table(vvgt_bi,file = "variant_comphet-biallelic_results.tsv",sep = "\t",row.names = FALSE,quote = FALSE)
