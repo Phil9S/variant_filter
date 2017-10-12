@@ -2,9 +2,9 @@
 
 ###Static variables
 BUILD="hg38"
-ANNO="/data/Resources/Software/"
-GATK="/data/Resources/Software/GenomeAnalysisTK.jar"
-REF="/data/Resources/hg38.bwa/hg38.bwaMergeAll.fa"
+ANNO="/data/Resources/Software/annovar/"
+GATK="/data/Resources/Software/Javas/GenomeAnalysisTK.jar"
+REF="/data/Resources/References/hg38.bwa/hg38.bwa.fa"
 
 ###Command-line variables and script start
 INPUT="NULL"
@@ -43,12 +43,64 @@ Options:
 --temp			Only option TRUE - automatically retains the temporary .table files and asociated intermediate files when script
 			is run using this option
 
+--help-more		Print extended help documentation for altering default reference files etc.
+
 Example usage			
 
 ./variant_filtering.sh --input /home/user/myvariants.vcf --output /home/user/ --project myvariants --config /home/user/variant_filtering.config --TEMP TRUE 
 		"			               
 		exit
 	fi
+done
+
+for arg in "$@"; do
+        if [[ "$arg" == "--help-more" ]]; then
+                echo -e "
+##Variant Filtering Script ## - Help Documentation
+
+Options:
+
+--project               Specifies a folder to generate results in - by default the folder is named 'Unknown_project_variantfiltering'.
+                        Folder is generated where the script is located.
+
+--input                 Full path to the VCF file you want to filter - REQUIRED
+
+--output                Full path to the desired output folder - REQUIRED
+
+--config                Full path to the provided variant_filtering.config file provided with the script - should contain 2 column tab
+                        separated file with names and values for each filtering parameter. Current parameters are;
+
+                        NAME            TYPE            Effect
+                        MEANDP          Interger        Filters on mean read-depth across all samples provided on provided value
+                        MAF             Float           Filters sites in found in provided proportion of all samples in VCF
+                        GQ              Interger        Filters on genotype quality at a given site across all samples
+                        MISSING         Float           Filters sites in which the provided proportion of genotypes are missing
+                        1000G           Float           Filters in 1000G data for given rarity (R-Script AND logic with ExAC)
+                        EXAC            Float           Filters in ExAC data for given rarity (RScript - AND logic with 1000G)
+                        CADD            Interger        Filters CADD score for each site at the provided value
+
+--temp                  Only option TRUE - automatically retains the temporary .table files and asociated intermediate files when script
+                        is run using this option
+
+--help-more             Print extended help documentation for altering default reference files etc.
+
+Default parameters:
+
+--anno			The full path of the annovar directory - e.g. /resources/sofware/annovar/
+
+--gatk			The full path of the GenomeAnalysisTK.jar file - e.g /resources/software/GATK/GenomeAnalysisTK.jar
+
+--build			Required by annovar to deploy the correct annotation information - Only human builds "hg19" and "hg38" are 
+			currently accepted for annotation
+
+--ref			The full path for a reference .fasta file for the genome build of your data
+
+Example usage
+
+./variant_filtering.sh --input /home/user/myvariants.vcf --output /home/user/ --project myvariants --config /home/user/variant_filtering.config --TEMP TRUE
+                "
+                exit
+        fi
 done
 
 
@@ -84,6 +136,22 @@ while [[ $# > 1 ]]
 		TEMP=${2}
 		shift
 		;;
+		--build)
+                BUILD=${2}
+                shift
+                ;;
+		--anno)
+                ANNO=${2}
+                shift
+                ;;
+		--gatk)
+                GATK=${2}
+                shift
+                ;;
+		--ref)
+                REF=${2}
+                shift
+                ;;
 	esac
 	shift
 done
@@ -120,6 +188,30 @@ fi
 ###TEMP status
 if [[ ${TEMP} -ne "FALSE" ]] && [[ ${TEMP} -ne "TRUE" ]]; then
         echo -e "## Variant Filter Script ## - ERROR - Unknown TEMP file string used - Please provide TRUE if you wish to retain temporary files"
+        exit
+fi
+
+###annovar directory
+if [[ ! -d ${ANNO} ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - Default Annovar directory not found - Please provide with --anno"
+        exit
+fi
+
+###gatk jar
+if [[ ! -f ${GATK} ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - Default GATK .jar file not found - Please provide with --gatk"
+        exit
+fi
+
+###reference genome
+if [[ ! -f ${GATK} ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - Default reference file not found - Please provide with --ref"
+        exit
+fi
+
+###Build version - for annovar
+if [[ ${BUILD} -ne "hg38" ]] && [[ ${BUILD} -ne "hg19" ]]; then
+        echo -e "## Variant Filter Script ## - ERROR - Unknown or Non-human build ID provided - Please provide hg19/hg38 builds with --build"
         exit
 fi
 
@@ -183,7 +275,7 @@ mv variantfilter.log ${OUTPUT}${PROJECT}_variantfiltering/variantfilter.log
 cd ${OUTPUT}${PROJECT}_variantfiltering
 
 
-###filter all sites containing ref/ref for all positions & on provided filters
+####filter all sites containing ref/ref for all positions & on provided filters
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Filtering VCF on specified values..." | tee -a variantfilter.log
 cp ${INPUT} variant_orig.vcf
 vcftools --vcf variant_orig.vcf --min-meanDP ${MEANDP} --max-maf ${MAF} --minGQ ${GQ} --max-missing ${MISSING} --recode --out variant_orig > /dev/null 2>&1
@@ -230,8 +322,8 @@ echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info f
 
 ###Generating annovar-annotation file for use as table - inc gMAF and damage predictions
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file..." | tee -a variantfilter.log
-${ANNO}annovar/convert2annovar.pl -format vcf4old annotate.recode.vcf --outfile annovarform > /dev/null 2>&1
-${ANNO}annovar/table_annovar.pl annovarform ${ANNO}annovar/humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp144,dbnsfp30a,clinvar_20160302,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
+${ANNO}convert2annovar.pl -format vcf4old annotate.recode.vcf --outfile annovarform > /dev/null 2>&1
+${ANNO}table_annovar.pl annovarform ${ANNO}humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp144,dbnsfp30a,clinvar_20160302,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
 mv annotated.hg38_multianno.txt annovar.table
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file...Done" | tee -a variantfilter.log
 
