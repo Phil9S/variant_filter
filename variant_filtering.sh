@@ -241,9 +241,9 @@ echo -e `date +[%D-%R]` "## Variant Filter Script ## - ExAC consortium rarity fi
 CADD=$(grep CADD ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - CADD variant damage prediction threshold set to ${CADD}" | tee -a variantfilter.log
 HET=$(grep HET ${CONFIG} | cut -f2)
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of heterozygous calls/site over all samples set to ${CADD}%" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Maximum number of heterozygous calls/site over all samples set to ${HET}%" | tee -a variantfilter.log
 ADEPTH=$(grep ADEPTH ${CONFIG} | cut -f2)
-echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum allelic depth for each site across all samples set to ${ADEPTH}" | tee -a variantfilter.log
+echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum alt allelic depth (%) for each site across all samples set to ${ADEPTH}" | tee -a variantfilter.log
 QUAL=$(grep QUAL ${CONFIG} | cut -f2)
 echo -e `date +[%D-%R]` "## Variant Filter Script ## - Miniumum site QUAL threshold set to ${QUAL}" | tee -a variantfilter.log
 SAMP_NUM=$(grep SAMP_NUM ${CONFIG} | cut -f2)

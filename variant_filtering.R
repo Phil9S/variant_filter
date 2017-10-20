@@ -48,6 +48,7 @@ vv$CONSEQUENCE <- anno$ExonicFunc.refGene
 vv$X1000G <- anno$X1000g2015aug_all
 vv$EXAC <- anno$ExAC_ALL
 vv$CADD <- anno$CADD_phred
+vv$CLINVAR <- anno$CLINSIG
 ###AF - making novel results = 0 and not -9 for freq calculations
 vv$X1000G[vv$X1000G == "-9"] <- 0
 vv$EXAC[vv$EXAC == "-9"] <- 0
@@ -141,7 +142,7 @@ rm(hetpct, hompct, misspct, calc, HETp, nonHOM, refHOM, miss, gtm)
 ##################################################################################################################
 
 ###filter variant ids that are below values for both 1000g & exac_all
-rarity.ft <- as.data.frame(anno$ID[anno$X1000g2015aug_all < X1000g | anno$ExAC_ALL < exac])
+rarity.ft <- as.data.frame(anno$ID[anno$X1000g2015aug_all < X1000g & anno$ExAC_ALL < exac])
 names(rarity.ft)[1] <- "ID"
 
 ###filter variant ids that are above cadd
