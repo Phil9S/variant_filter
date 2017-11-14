@@ -324,7 +324,7 @@ echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info f
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file..." | tee -a variantfilter.log
 ${ANNO}convert2annovar.pl -format vcf4old annotate.recode.vcf --outfile annovarform > /dev/null 2>&1
 ${ANNO}table_annovar.pl annovarform ${ANNO}humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp144,dbnsfp30a,clinvar_20160302,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
-mv annotated.hg38_multianno.txt annovar.table
+mv annotated.${BUILD}_multianno.txt annovar.table
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file...Done" | tee -a variantfilter.log
 
 
