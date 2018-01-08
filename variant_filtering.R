@@ -48,6 +48,8 @@ vv$CONSEQUENCE <- anno$ExonicFunc.refGene
 vv$X1000G <- anno$X1000g2015aug_all
 vv$EXAC <- anno$ExAC_ALL
 vv$CADD <- anno$CADD_phred
+vv$SIFT <- anno$SIFT_pred
+vv$POLYPHEN <- anno$Polyphen2_HVAR_pred
 vv$CLINVAR <- anno$CLINSIG
 ###AF - making novel results = 0 and not -9 for freq calculations
 vv$X1000G[vv$X1000G == "-9"] <- 0
@@ -101,7 +103,7 @@ qual.ft <- as.data.frame(vv.ft$ID[vv.ft$QUAL > QUAL])
 names(qual.ft)[1] <- "ID"
 vv.ft <- vv.ft[vv.ft$ID %in% qual.ft$ID,]
 ###log number of variants - func
-varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching QUAL > 100:",nrow(qual.ft))
+varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching QUAL:",nrow(qual.ft))
 write(varcount, file = "R_log.txt", append = TRUE)
 
 ##################################################################################################################

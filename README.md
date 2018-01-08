@@ -77,14 +77,13 @@ A set of scripts for filtering multi-sample VCF files to generate candidate vari
 * Calculates sets of variants that are potentially compound heterozygous
 * Sites are retained if two or more occur in the same sample and gene simultanously
 
-##
 
 ### Required dependencies and software:
 * [Annovar](http://annovar.openbioinformatics.org/en/latest/) - Including various databases
 * [vcftools](http://vcftools.sourceforge.net/index.html)
 * [bcftools](https://samtools.github.io/bcftools/bcftools.html)
-* [R (version 3.3.3)](https://cran.r-project.org/)
+* [R (version 3.4.0)](https://cran.r-project.org/)
 # Required R Libraries:
 * [stringr](https://cran.r-project.org/web/packages/stringr/index.html)     
 
-##
+
