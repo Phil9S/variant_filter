@@ -2,7 +2,7 @@
 
 ###Static variables
 BUILD="hg38"
-ANNO="/data/Resources/Software/annovar/"
+ANNO="/home/pss41/resources/annovar/"
 GATK="/data/Resources/Software/Javas/GenomeAnalysisTK.jar"
 REF="/data/Resources/References/hg38.bwa/hg38.bwa.fa"
 
@@ -278,10 +278,9 @@ cd ${OUTPUT}${PROJECT}_variantfiltering
 ####filter all sites containing ref/ref for all positions & on provided filters
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Filtering VCF on specified values..." | tee -a variantfilter.log
 cp ${INPUT} variant_orig.vcf
-vcftools --vcf variant_orig.vcf --min-meanDP ${MEANDP} --max-maf ${MAF} --minGQ ${GQ} --max-missing ${MISSING} --recode --out variant_orig > /dev/null 2>&1
+vcftools --vcf variant_orig.vcf --non-ref-ac-any 1 --min-meanDP ${MEANDP} --max-maf ${MAF} --minGQ ${GQ} --max-missing ${MISSING} --recode --out variant_orig 
 mv variant_orig.recode.vcf variant_filtered.vcf
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Filtering VCF on specified values...Done" | tee -a variantfilter.log
-
 
 ###Spliting of multiallelic sites
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Splitting multiallelic sites..." | tee -a variantfilter.log
@@ -323,7 +322,7 @@ echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating vcf info f
 ###Generating annovar-annotation file for use as table - inc gMAF and damage predictions
 echo -en `date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file..." | tee -a variantfilter.log
 ${ANNO}convert2annovar.pl -format vcf4old annotate.recode.vcf --outfile annovarform > /dev/null 2>&1
-${ANNO}table_annovar.pl annovarform ${ANNO}humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp144,dbnsfp30a,clinvar_20160302,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
+${ANNO}table_annovar.pl annovarform ${ANNO}humandb/ -buildver ${BUILD} -out annotated -remove -protocol refGene,1000g2015aug_all,exac03,avsnp150,dbnsfp35a,clinvar_20180603,cosmic70,nci60,dbscsnv11 -operation g,f,f,f,f,f,f,f,f -nastring -9 > /dev/null 2>&1
 mv annotated.${BUILD}_multianno.txt annovar.table
 echo -e "\r"`date +[%D-%R]` "## Variant Filter Script ## - Generating annovar annotation file...Done" | tee -a variantfilter.log
 

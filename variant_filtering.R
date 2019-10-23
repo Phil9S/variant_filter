@@ -50,7 +50,7 @@ vv$EXAC <- anno$ExAC_ALL
 vv$CADD <- anno$CADD_phred
 vv$SIFT <- anno$SIFT_pred
 vv$POLYPHEN <- anno$Polyphen2_HVAR_pred
-vv$CLINVAR <- anno$CLINSIG
+vv$CLINVAR <- anno$CLNSIG
 ###AF - making novel results = 0 and not -9 for freq calculations
 vv$X1000G[vv$X1000G == "-9"] <- 0
 vv$EXAC[vv$EXAC == "-9"] <- 0
@@ -170,8 +170,8 @@ rm(rarity.ft,func.ft,qual.ft)
 
 ##################################################################################################################
 
-###filter by het/hom ratio and het rate (het > hom & no het rate in cohort above 15%)
-hethom.ft <- as.data.frame(vv.ft$ID[vv.ft$HET_rate < HET & vv.ft$HET_rate >= vv.ft$HOM_rate])
+###filter by het/hom ratio and het rate (het > 0 & no het rate in cohort above 15%)
+hethom.ft <- as.data.frame(vv.ft$ID[vv.ft$HET_rate < HET])
 names(hethom.ft)[1] <- "ID" 
 #log number of variants - Het/Hom
 varcount <- paste("##Variant Filter Script ## R-script Log - Variants matching Het/Hom thresholds:",nrow(hethom.ft))
@@ -201,7 +201,6 @@ af_mat1 <- as.matrix(apply(af_mat1,2,function(x) as.numeric(x)))
 af_mat2 <- as.matrix(apply(af_mat2,2,function(x) as.numeric(x)))
 ad_pct <- af_mat2 / (af_mat1 + af_mat2)
 af <- cbind(af_index, ad_pct)
-
 
 rm(af_index, ad_pct, af_mat1, af_mat2)
 
